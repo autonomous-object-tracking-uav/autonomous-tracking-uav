@@ -1,7 +1,7 @@
 # anti-drone-system
 The software repository for Rob Squad's autonomous tracking and capture drone system for Linux based systems.
 
-This project has been developed in Python for the following configuration : 
+This project has been developed in Python for the following configuration :
 Raspberry Pi 3b running Raspbian Jessie
 Flight Controller : Flip 32
 Camera : Pixy_CMU_5 2.0.19
@@ -13,9 +13,13 @@ Camera : Pixy_CMU_5 2.0.19
 	Drivers :  http://www.cmucam.org/projects/cmucam5/wiki/Installing_PixyMon_on_Linux
 	Python Library : http://www.cmucam.org/projects/cmucam5/wiki/Building_libpixyusb_as_a_Python_module_on_Linux
 
-Additional Set Up Information That Might Be Useful 
+Additional Set Up Information That Might Be Useful
 Set up RPi as a wireless access point for control with ssh :
-https://frillip.com/using-your-raspberry-pi-3-as-a-wifi-access-point-with-hostapd/ 
+https://frillip.com/using-your-raspberry-pi-3-as-a-wifi-access-point-with-hostapd/
+
+## Relevant Documentation
+1. [Cleanflight](https://github.com/cleanflight/cleanflight/tree/master/docs)
+2. [Hackflight Parser](https://github.com/simondlevy/hackflight/tree/master/parser)
 
 ## Usage
 
