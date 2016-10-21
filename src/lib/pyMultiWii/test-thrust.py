@@ -12,14 +12,17 @@ if __name__ == "__main__":
 	
 	board = MultiWii("/dev/ttyUSB0")
 
-	board.arm()
-	
+	print(thrust,T)
+
+	board.arm()	
 	start = time.time()
 	timeElapsed = 0
-	sleepTime = .9
-
+	sleepTime = .25
+	
+	data = [1500, 1500, thrust, 1500, 1500, 1500, 1500, 1500]
 	while timeElapsed < T:
 		print(timeElapsed)
+		board.sendCMD(16, MultiWii.SET_RAW_RC, data)
 		timeElapsed = time.time() - start
 		time.sleep(sleepTime)	
 
