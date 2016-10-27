@@ -2,6 +2,7 @@ from pixy import *
 from ctypes import *
 from MultiWii import MultiWii
 
+
 pixy_init()
 #board = MultiWii("/dev/ttyUSB0")
 

@@ -21,7 +21,7 @@ while True:
 
 	# FC CODE
 	board.getData(MultiWii.ATTITUDE)
-	print board.attitude		
+	#print board.attitude		
 
 	# PIXY CODE
 	count = pixy_get_blocks(100, blocks)
