@@ -2,7 +2,6 @@ from pixy import *
 from ctypes import *
 from MultiWii import MultiWii
 
-
 pixy_init()
 #board = MultiWii("/dev/ttyUSB0")
 
@@ -17,18 +16,18 @@ class Blocks (Structure):
 
 blocks = BlockArray(100)
 frame  = 0
-XCNTR = float(319.0/2.0)
-YCNTR = float(199.0/2.0)
+XCNTR = 319.0/2.0
+YCNTR = 199.0/2.0
 
-MAX_THRUST = float(2000)
-MIN_THRUST = float(1000)
-MED_THRUST = float((MAX_THRUST + MIN_THRUST)/2.0)
-THRUST_SCALE = float((MAX_THRUST-MED_THRUST)/(YCNTR))
+MAX_THRUST = 2000.0
+MIN_THRUST = 1000.0
+MED_THRUST = (MAX_THRUST + MIN_THRUST)/2.0
+THRUST_SCALE = (MAX_THRUST-MED_THRUST)/YCNTR
 
-MAX_YAW = float(2000)
-MIN_YAW = float(1000)
-MED_YAW = float((MAX_YAW + MIN_YAW)/2.0)
-YAW_SCALE = float((MAX_YAW-MED_YAW)/(XCNTR))
+MAX_YAW = 2000.0
+MIN_YAW = 1000.0
+MED_YAW = (MAX_YAW + MIN_YAW)/2.0
+YAW_SCALE = (MAX_YAW-MED_YAW)/XCNTR
 
 while True:
 
@@ -59,4 +58,4 @@ while True:
 			yaw = MED_YAW + YAW_SCALE*(-xDim + XCNTR)
 
 			#print "\rX location: ", str(xDim) + " - Y location: ", yDim,	# This line is for testing above block 
-			print "Yaw value: " , str(yaw) , " - Thrust value: " , str(thrust)
+			print "Yaw value: " , yaw , " - Thrust value: " , thrust
