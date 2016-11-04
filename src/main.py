@@ -18,7 +18,6 @@ blocks = BlockArray(100)
 frame  = 0
 
 while True:
-	#push test
 	# FC CODE
 	board.getData(MultiWii.ATTITUDE)
 	print board.attitude		
