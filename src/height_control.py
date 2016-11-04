@@ -6,7 +6,7 @@ from time import sleep
 from sys import argv
 
 pixy_init()
-#board = MultiWii("/dev/ttyUSB0")
+board = MultiWii("/dev/ttyUSB0")
 
 class Blocks (Structure):
 	_fields_ = [ ("type", c_uint),
@@ -20,17 +20,24 @@ class Blocks (Structure):
 blocks = BlockArray(100)
 frame  = 0
 
+roll_offset = 1500
 thrust_offset = 1420
-pixel_offset = 100
+pixel_x_offset = 160
+pixel_y_offset = 100
+
 
 time = 0
 dt = 0.05
-pid = Pid(5, 0, 0, dt=dt)
-pid.set_limit([1200-thrust_offset, 1500-thrust_offset])
-pid.set_reference(pixel_offset)
+
+roll_pid = Pid(0.1, 0, 0, dt=dt)
+roll_pid.set_limit([-20, 20])
+roll_pid.set_reference(pixel_x_offset)
+thrust_pid = Pid(1, 0, 0, dt=dt)
+thrust_pid.set_limit([-50, 50])
+thrust_pid.set_reference(pixel_y_offset)
 
 if len(argv) > 1 and argv[1] == 'ARM':
-	#board.arm()
+	board.arm()
 	print 'Flight controller is ARMED.'
 else:
 	print 'Running script in SAFE MODE.'
@@ -40,15 +47,16 @@ while True:
 		count = pixy_get_blocks(100, blocks)
 		if count > 0:
 			frame = frame + 1
-			for index in range(0, count):
-				thrust = pid.get_output(blocks[index].y) + thrust_offset
-				print 't=%3d, frame=%3d, y=%3d, thrust=%3d' % (time, frame, blocks[index].y, thrust)
+			thrust = thrust_pid.get_output(blocks[0].y) + thrust_offset
+			roll = -roll_pid.get_output(blocks[0].x) + roll_offset
+			print 't=%3d, frame=%3d, x=%3d, y=%3d, size=%3d, roll=%3d, thrust=%3d' % (time, frame, blocks[0].x, blocks[0].y, blocks[0].width*blocks[0].height, roll, thrust)
 		else:
-			thrust = pid.get_output(pixel_offset) + thrust_offset
-			print 't=%3d, nothing detected, thrust=%3d' % (time, thrust)	
+			thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
+			roll = roll_pid.get_output(pixel_x_offset) + roll_offset
+			print 't=%3d, nothing detected, roll=%3d, thrust=%3d' % (time, roll, thrust)	
 	
-		data = [1500, 1500, thrust, 1500, 1500, 1500, 1500, 1500]
-		#board.sendCMD(16, MultiWii.SET_RAW_RC, data)
+		data = [roll, 1500, thrust, 1500, 1500, 1500, 1500, 1500]
+		board.sendCMD(16, MultiWii.SET_RAW_RC, data)
 		sleep(dt)
 		time += dt
 
@@ -56,10 +64,10 @@ while True:
 		while True:
 			try:	
 				print 'Landing mode. Press CTRL+C to disarm.'
-				#board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, thrust_offset-50, 1500, 1500, 1500, 1500, 1500])
+				board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, 1400, 1500, 1500, 1500, 1500, 1500])
 				sleep(dt)
 				time += dt
 			except KeyboardInterrupt:
-				#board.disarm()
+				board.disarm()
 				break
 		break
