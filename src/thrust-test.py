@@ -20,10 +20,18 @@ if __name__ == "__main__":
 	sleepTime = .25
 	
 	data = [1500, 1500, thrust, 1500, 1500, 1500, 1500, 1500]
+
 	while timeElapsed < T:
-		if thrust > 1850 and (T - timeElapsed < .65):
-			thrust = 1800
+
+		timeRemaining = T - timeElapsed
+		if thrust >= 1400 and timeRemaining < 1.0:
+			thrust = 1420
 			data[2] = thrust
+		elif thrust >= 1400 and T >= 3.0 and timeElapsed > 1.0:
+			thrust = 1440
+			data[2] = thrust
+
+
 		board.sendCMD(16, MultiWii.SET_RAW_RC, data)
 		print(timeElapsed,thrust)
 		timeElapsed = time.time() - start
