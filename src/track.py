@@ -19,7 +19,8 @@ else:
         datanum = 0
 filename = 'data' + str(datanum) + '.csv'
 datafile = open(join(path, filename), 'wb')
-csvwriter = csv.writer(datafile, delimiter=',')
+csvwriter = csv.writer(datafile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+csvwriter.writerow(['time', 'frame', 'x', 'y', 'size', 'roll', 'pitch', 'thrust', 'yaw'])
 
 class Blocks (Structure):
         _fields_ = [ ("type", c_uint),
