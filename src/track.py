@@ -31,7 +31,6 @@ thrust_offset = 1250            # center thrust control value (~hover)
 pixel_x_offset = 160            # center of screen on x-axis
 size_inv_offset = 0.0025        # inverse of size at three paces distance
 pixel_y_offset = 100            # center of screen on y-axis
-
 dt = 0.02                       # 50 Hz refresh rate
 
 R_KP = .1
@@ -65,10 +64,10 @@ program_start = time.time()
 
 while True:
     try:
+	frame = frame + 1
         loop_start = time.time()
 	count = pixy_get_blocks(1, blocks)
 	if count > 0:
-	    frame = frame + 1
             x = blocks[0].x
             y = blocks[0].y
             size_inv = 1.0/((blocks[0].width + 1) * (blocks[0].height + 1))
@@ -85,19 +84,20 @@ while True:
 	    thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
 	    yaw = 1500
 
-	    data = [time.time() - program_start, frame, x, y, size_inv, roll, pitch, thrust, yaw]
-	    print data
-	    csvwriter.writerow(data)
-	    command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
-	    board.sendCMD(16, MultiWii.SET_RAW_RC, command)
-	    time.sleep(dt - (loop_start - time.time()))
+	data = [time.time() - program_start, frame, x, y, size_inv, roll, pitch, thrust, yaw]
+	print data
+	csvwriter.writerow(data)
+        command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
+	board.sendCMD(16, MultiWii.SET_RAW_RC, command)
+	time.sleep(dt - (loop_start - time.time()))
 
     except KeyboardInterrupt:
 	datafile.close()
+	print 'Landing mode. Press CTRL+C to stop.'
 	while True:
+	    frame = frame + 1
             loop_start = time.time()
 	    try:
-	        print 'Landing mode. Press CTRL+C to stop.'
 		board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, 1400, 1500, 1500, 1500, 1500, 1500])
 		time.sleep(dt - (loop_start - time.time()))
             except KeyboardInterrupt:
