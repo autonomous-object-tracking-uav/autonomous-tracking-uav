@@ -80,8 +80,8 @@ while True:
 			x = None
 			y = None
 			size_inv = None
-			roll = roll_pid.get_output(pixel_x_offset) + roll_offset
-			pitch = pitch_pid.get_output(size_inv_offset) + pitch_offset
+			roll = -roll_pid.get_output(pixel_x_offset) + roll_offset
+			pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
 			thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
 			yaw = 1500
 
@@ -90,7 +90,7 @@ while True:
 		csvwriter.writerow(data)
 		command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
 		board.sendCMD(16, MultiWii.SET_RAW_RC, command)
-		sleep(dt - (loop_start - time.time()))
+		time.sleep(dt - (loop_start - time.time()))
 
 	except KeyboardInterrupt:
 		datafile.close()
@@ -99,7 +99,7 @@ while True:
 			try:
 				print 'Landing mode. Press CTRL+C to stop.'
 				board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, 1400, 1500, 1500, 1500, 1500, 1500])
-				sleep(dt - (loop_start - time.time()))
+				time.sleep(dt - (loop_start - time.time()))
 			except KeyboardInterrupt:
 				board.disarm()
 				pixy_close()
