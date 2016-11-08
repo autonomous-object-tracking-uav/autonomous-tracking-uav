@@ -26,10 +26,10 @@ blocks = BlockArray(1)
 frame  = 0
 
 roll_offset = 1500              # center roll control value
-pitch_offset = 1500		# center pitch control value 
+pitch_offset = 1500             # center pitch control value
 thrust_offset = 1250            # center thrust control value (~hover)
 pixel_x_offset = 160            # center of screen on x-axis
-size_inv_offset = 0.0025	# inverse of size at three paces distance
+size_inv_offset = 0.0025        # inverse of size at three paces distance
 pixel_y_offset = 100            # center of screen on y-axis
 
 dt = 0.02                       # 50 Hz refresh rate
@@ -65,12 +65,12 @@ program_start = time.time()
 
 while True:
 	try:
-                loop_start = time.time()
+        loop_start = time.time()
 		count = pixy_get_blocks(1, blocks)
 		if count > 0:
 			frame = frame + 1
-			x = blocks[0].x 
-			y = blocks[0].y 
+			x = blocks[0].x
+			y = blocks[0].y
 			size_inv = 1.0/((blocks[0].width + 1) * (blocks[0].height + 1))
 			roll = -roll_pid.get_output(x) + roll_offset
 			pitch = -pitch_pid.get_output(size_inv) + pitch_offset
@@ -95,7 +95,7 @@ while True:
 	except KeyboardInterrupt:
 		datafile.close()
 		while True:
-                        loop_start = time.time()
+            loop_start = time.time()
 			try:
 				print 'Landing mode. Press CTRL+C to stop.'
 				board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, 1400, 1500, 1500, 1500, 1500, 1500])
