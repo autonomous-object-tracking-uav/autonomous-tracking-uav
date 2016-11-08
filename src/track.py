@@ -32,7 +32,6 @@ pixel_x_offset = 160            # center of screen on x-axis
 size_inv_offset = 0.0025	# inverse of size at three paces distance
 pixel_y_offset = 100            # center of screen on y-axis
 
-time = 0
 dt = 0.02                       # 50 Hz refresh rate
 
 R_KP = .1
@@ -62,6 +61,8 @@ if len(argv) > 1 and argv[1] == 'ARM':
 else:
 	print 'Running script in SAFE MODE.'
 
+program_start = time.time()
+
 while True:
 	try:
                 loop_start = time.time()
@@ -84,13 +85,12 @@ while True:
 			thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
 			yaw = 1500
 
-		data = [time, frame, x, y, size_inv, roll, pitch, thrust, yaw]
+		data = [time.time() - program_start, frame, x, y, size_inv, roll, pitch, thrust, yaw]
 		print data
 		csvwriter.writerow(data)
 		command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
 		board.sendCMD(16, MultiWii.SET_RAW_RC, command)
 		sleep(dt - (loop_start - time.time()))
-		time += dt
 
 	except KeyboardInterrupt:
 		datafile.close()
@@ -100,7 +100,6 @@ while True:
 				print 'Landing mode. Press CTRL+C to stop.'
 				board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, 1400, 1500, 1500, 1500, 1500, 1500])
 				sleep(dt - (loop_start - time.time()))
-				time += dt
 			except KeyboardInterrupt:
 				board.disarm()
 				pixy_close()
