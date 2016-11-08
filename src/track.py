@@ -22,15 +22,6 @@ datafile = open(join(path, filename), 'wb')
 csvwriter = csv.writer(datafile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 csvwriter.writerow(['time', 'frame', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'yaw'])
 
-class Blocks (Structure):
-        _fields_ = [ ("type", c_uint),
-                ("signature", c_uint),
-                ("x", c_uint),
-                ("y", c_uint),
-                ("width", c_uint),
-                ("height", c_uint),
-                ("angle", c_uint) ]
-
 blocks = BlockArray(1)
 frame  = 0
 
