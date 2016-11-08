@@ -2,11 +2,11 @@ from pixy import *
 from ctypes import *
 from MultiWii import MultiWii
 from Pid import Pid
-from time import sleep
 from sys import argv
 from os import listdir
 from os.path import isfile, join
 import csv
+import time
 
 pixy_init()
 board = MultiWii('/dev/ttyUSB0')
@@ -33,7 +33,7 @@ size_inv_offset = 0.0025	# inverse of size at three paces distance
 pixel_y_offset = 100            # center of screen on y-axis
 
 time = 0
-dt = 0.05
+dt = 0.02                       # 50 Hz refresh rate
 
 R_KP = .1
 R_KI = 0
@@ -64,6 +64,7 @@ else:
 
 while True:
 	try:
+                loop_start = time.time()
 		count = pixy_get_blocks(1, blocks)
 		if count > 0:
 			frame = frame + 1
@@ -88,16 +89,17 @@ while True:
 		csvwriter.writerow(data)
 		command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
 		board.sendCMD(16, MultiWii.SET_RAW_RC, command)
-		sleep(dt)
+		sleep(dt - (loop_start - time.time()))
 		time += dt
 
 	except KeyboardInterrupt:
 		datafile.close()
 		while True:
+                        loop_start = time.time()
 			try:
 				print 'Landing mode. Press CTRL+C to stop.'
 				board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, 1400, 1500, 1500, 1500, 1500, 1500])
-				sleep(dt)
+				sleep(dt - (loop_start - time.time()))
 				time += dt
 			except KeyboardInterrupt:
 				board.disarm()
