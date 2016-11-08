@@ -31,12 +31,12 @@ class Blocks (Structure):
                 ("height", c_uint),
                 ("angle", c_uint) ]
 
-blocks = BlockArray(100)
+blocks = BlockArray(1)
 frame  = 0
 
 roll_offset = 1500              # center roll control value
 pitch_offset = 1500		# center pitch control value 
-thrust_offset = 1420            # center thrust control value (~hover)
+thrust_offset = 1250            # center thrust control value (~hover)
 pixel_x_offset = 160            # center of screen on x-axis
 size_inv_offset = 0.0025	# inverse of size at three paces distance
 pixel_y_offset = 100            # center of screen on y-axis
@@ -58,7 +58,7 @@ pitch_pid = Pid(P_KP, P_KI, P_KD, dt=dt)
 pitch_pid.set_limit([-20, 20])
 pitch_pid.set_reference(size_inv_offset)
 
-T_KP = 1
+T_KP = 2
 T_KI = 0
 T_KD = 0
 thrust_pid = Pid(T_KP, T_KI, T_KD, dt=dt)
@@ -73,7 +73,7 @@ else:
 
 while True:
 	try:
-		count = pixy_get_blocks(100, blocks)
+		count = pixy_get_blocks(1, blocks)
 		if count > 0:
 			frame = frame + 1
 			x = blocks[0].x 
@@ -110,5 +110,6 @@ while True:
 				time += dt
 			except KeyboardInterrupt:
 				board.disarm()
+				pixy_close()
 				break
 		break
