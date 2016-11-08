@@ -56,52 +56,52 @@ thrust_pid.set_limit([-50, 50])
 thrust_pid.set_reference(pixel_y_offset)
 
 if len(argv) > 1 and argv[1] == 'ARM':
-	board.arm()
-	print 'Flight controller is ARMED.'
+    board.arm()
+    print 'Flight controller is ARMED.'
 else:
-	print 'Running script in SAFE MODE.'
+    print 'Running script in SAFE MODE.'
 
 program_start = time.time()
 
 while True:
-	try:
+    try:
         loop_start = time.time()
-		count = pixy_get_blocks(1, blocks)
-		if count > 0:
-			frame = frame + 1
-			x = blocks[0].x
-			y = blocks[0].y
-			size_inv = 1.0/((blocks[0].width + 1) * (blocks[0].height + 1))
-			roll = -roll_pid.get_output(x) + roll_offset
-			pitch = -pitch_pid.get_output(size_inv) + pitch_offset
-			thrust = thrust_pid.get_output(y) + thrust_offset
-			yaw = 1500
-		else:
-			x = None
-			y = None
-			size_inv = None
-			roll = -roll_pid.get_output(pixel_x_offset) + roll_offset
-			pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
-			thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
-			yaw = 1500
+	count = pixy_get_blocks(1, blocks)
+	if count > 0:
+	    frame = frame + 1
+            x = blocks[0].x
+            y = blocks[0].y
+            size_inv = 1.0/((blocks[0].width + 1) * (blocks[0].height + 1))
+	    roll = -roll_pid.get_output(x) + roll_offset
+	    pitch = -pitch_pid.get_output(size_inv) + pitch_offset
+	    thrust = thrust_pid.get_output(y) + thrust_offset
+	    yaw = 1500
+	else:
+            x = None
+            y = None
+	    size_inv = None
+	    roll = -roll_pid.get_output(pixel_x_offset) + roll_offset
+	    pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
+	    thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
+	    yaw = 1500
 
-		data = [time.time() - program_start, frame, x, y, size_inv, roll, pitch, thrust, yaw]
-		print data
-		csvwriter.writerow(data)
-		command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
-		board.sendCMD(16, MultiWii.SET_RAW_RC, command)
-		time.sleep(dt - (loop_start - time.time()))
+	    data = [time.time() - program_start, frame, x, y, size_inv, roll, pitch, thrust, yaw]
+	    print data
+	    csvwriter.writerow(data)
+	    command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
+	    board.sendCMD(16, MultiWii.SET_RAW_RC, command)
+	    time.sleep(dt - (loop_start - time.time()))
 
-	except KeyboardInterrupt:
-		datafile.close()
-		while True:
+    except KeyboardInterrupt:
+	datafile.close()
+	while True:
             loop_start = time.time()
-			try:
-				print 'Landing mode. Press CTRL+C to stop.'
-				board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, 1400, 1500, 1500, 1500, 1500, 1500])
-				time.sleep(dt - (loop_start - time.time()))
-			except KeyboardInterrupt:
-				board.disarm()
-				pixy_close()
-				break
+	    try:
+	        print 'Landing mode. Press CTRL+C to stop.'
+		board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, 1400, 1500, 1500, 1500, 1500, 1500])
+		time.sleep(dt - (loop_start - time.time()))
+            except KeyboardInterrupt:
+                board.disarm()
+	        pixy_close()
 		break
+	break
