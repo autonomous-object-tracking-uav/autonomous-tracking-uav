@@ -20,7 +20,7 @@ else:
 filename = 'data' + str(datanum) + '.csv'
 datafile = open(join(path, filename), 'wb')
 csvwriter = csv.writer(datafile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-csvwriter.writerow(['time', 'frame', 'x', 'y', 'size', 'roll', 'pitch', 'thrust', 'yaw'])
+csvwriter.writerow(['time', 'frame', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'yaw'])
 
 class Blocks (Structure):
         _fields_ = [ ("type", c_uint),
@@ -34,18 +34,34 @@ class Blocks (Structure):
 blocks = BlockArray(100)
 frame  = 0
 
-roll_offset = 1500              # center roll value
-thrust_offset = 1420            # center thrust value (~hover)
+roll_offset = 1500              # center roll control value
+pitch_offset = 1500		# center pitch control value 
+thrust_offset = 1420            # center thrust control value (~hover)
 pixel_x_offset = 160            # center of screen on x-axis
+size_inv_offset = 0.0025	# inverse of size at three paces distance
 pixel_y_offset = 100            # center of screen on y-axis
 
 time = 0
 dt = 0.05
 
-roll_pid = Pid(0.1, 0, 0, dt=dt)
+R_KP = .1
+R_KI = 0
+R_KD = 0
+roll_pid = Pid(R_KP, R_KI, R_KD, dt=dt)
 roll_pid.set_limit([-20, 20])
 roll_pid.set_reference(pixel_x_offset)
-thrust_pid = Pid(1, 0, 0, dt=dt)
+
+P_KP = 10000
+P_KI = 0
+P_KD = 0
+pitch_pid = Pid(P_KP, P_KI, P_KD, dt=dt)
+pitch_pid.set_limit([-20, 20])
+pitch_pid.set_reference(size_inv_offset)
+
+T_KP = 1
+T_KI = 0
+T_KD = 0
+thrust_pid = Pid(T_KP, T_KI, T_KD, dt=dt)
 thrust_pid.set_limit([-50, 50])
 thrust_pid.set_reference(pixel_y_offset)
 
@@ -60,23 +76,23 @@ while True:
 		count = pixy_get_blocks(100, blocks)
 		if count > 0:
 			frame = frame + 1
-			x = blocks[0].x
-			y = blocks[0].y
-			size = blocks[0].width * blocks[0].height
+			x = blocks[0].x 
+			y = blocks[0].y 
+			size_inv = 1.0/((blocks[0].width + 1) * (blocks[0].height + 1))
 			roll = -roll_pid.get_output(x) + roll_offset
-			pitch = 1500
+			pitch = -pitch_pid.get_output(size_inv) + pitch_offset
 			thrust = thrust_pid.get_output(y) + thrust_offset
 			yaw = 1500
 		else:
 			x = None
 			y = None
-			size = None
+			size_inv = None
 			roll = roll_pid.get_output(pixel_x_offset) + roll_offset
-			pitch = 1500
+			pitch = pitch_pid.get_output(size_inv_offset) + pitch_offset
 			thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
 			yaw = 1500
 
-		data = [time, frame, x, y, size, roll, pitch, thrust, yaw]
+		data = [time, frame, x, y, size_inv, roll, pitch, thrust, yaw]
 		print data
 		csvwriter.writerow(data)
 		command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
