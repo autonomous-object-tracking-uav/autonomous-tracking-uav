@@ -39,10 +39,10 @@ class Pid():
         if self.iteration >= self.n:
             tmp = self.iteration % self.n
             if tmp < self.n / 2:
-                a = sum(self.store[tmp:self.n / 2 + tmp])
+                a = sum(self.store[tmp + 1:tmp + 1 + self.n / 2])
                 b = sum(self.store) - a
             else:
-                b = sum(self.store[tmp - self.n / 2:tmp])
+                b = sum(self.store[tmp + 1 - self.n / 2:tmp + 1])
                 a = sum(self.store) - b
             return self.Kd * (a - b)
         else:
