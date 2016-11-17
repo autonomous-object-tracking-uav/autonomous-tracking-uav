@@ -7,7 +7,28 @@ from os import listdir
 from os.path import isfile, join
 import csv
 import time
+# PIXY DATA RANGE
+# Xmin == Ymin == 1
+# Xmax == 319
+# Ymax == 198
 
+
+def parseBlock(block):
+    # RETURNS :
+    # [x, y, inv_size]
+    #   - x, y : x & y coordnates for center of detected object
+    #   - inv_size : the inverted size of the detected region. NOTE: This value
+    #   is only assigned under the condition that the object is entirely within
+    #   the frame or that it is detected as being too close to the pixy
+    size_thr = 0.0002 # Distance of about 3 feet from pixy
+    margin = 20
+    x = block.x
+    y = block.y
+    width = block.width + 1
+    height = block.height + 1
+    if 
+
+FMT_STR = 'time=%.2f frame=%4d x=%3d y=%3d size_inv=%.7f roll=%4d pitch=%4d thrust=%4d yaw=%4d'
 pixy_init()
 board = MultiWii('/dev/ttyUSB0')
 
@@ -18,6 +39,7 @@ if len(filenames) != 0:
 else:
         datanum = 0
 filename = 'data' + str(datanum) + '.csv'
+print filename
 datafile = open(join(path, filename), 'wb')
 csvwriter = csv.writer(datafile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 csvwriter.writerow(['time', 'frame', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'yaw'])
@@ -72,48 +94,63 @@ else:
     print 'Running script in SAFE MODE.'
 
 program_start = time.time()
+xmin = 999
+ymin = 999
+xmax = -1
+ymax = -1
 
 while True:
     try:
-	frame = frame + 1
+        frame = frame + 1
         loop_start = time.time()
-	count = pixy_get_blocks(1, blocks)
-	if count > 0:
+
+        count = pixy_get_blocks(1, blocks)
+        if count > 0:
             x = blocks[0].x
             y = blocks[0].y
+            if x < xmin:
+                xmin = x
+            elif x > xmax:
+                xmax = x
+            if y < ymin:
+                ymin = y
+            elif y > ymax:
+                ymax = y
+
             size_inv = 1.0/((blocks[0].width + 1) * (blocks[0].height + 1))
-	    roll = -roll_pid.get_output(x) + roll_offset
-	    pitch = -pitch_pid.get_output(size_inv) + pitch_offset
-	    thrust = thrust_pid.get_output(y) + thrust_offset
-	    yaw = 1500
-	else:
+            roll = -roll_pid.get_output(x) + roll_offset
+            pitch = -pitch_pid.get_output(size_inv) + pitch_offset
+            thrust = thrust_pid.get_output(y) + thrust_offset
+            yaw = 1500
+        else:
             x = None
             y = None
-	    size_inv = None
-	    roll = -roll_pid.get_output(pixel_x_offset) + roll_offset
-	    pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
-	    thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
-	    yaw = 1500
-
-	data = [time.time() - program_start, frame, x, y, size_inv, roll, pitch, thrust, yaw]
-	print 'time=%.2f frame=%4d x=%3d y=%3d size_inv=%.7f roll=%4d pitch=%4d thrust=%4d yaw=%4d' % tuple([0.0 if x is None else x for x in data])
-	csvwriter.writerow(data)
+            size_inv = None
+            roll = -roll_pid.get_output(pixel_x_offset) + roll_offset
+            pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
+            thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
+            yaw = 1500
+        data = [time.time() - program_start, frame, x, y, size_inv, roll, pitch, thrust, yaw]
+        print FMT_STR % tuple([-11 if x is None else x for x in data])
+    	if data is not None:
+            csvwriter.writerow(data)
         command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
-	attitude = board.sendCMDreceiveATT(16, MultiWii.SET_RAW_RC, command)
-	print attitude
-	time.sleep(dt - (loop_start - time.time()))
+#        attitude = board.sendCMDreceiveATT(16, MultiWii.SET_RAW_RC, command)
+#        print attitude
+        time.sleep(dt - (loop_start - time.time()))
 
     except KeyboardInterrupt:
-	datafile.close()
-	print 'Landing mode. Press CTRL+C to stop.'
-	while True:
-	    frame = frame + 1
+        print 'xmin  ' + str(xmin) + ' ymin ' + str(ymin) + ' xmax '
+        print str(xmax) + ' ymax ' +  str(ymax)
+        datafile.close()
+        print 'Landing mode. Press CTRL+C to stop.'
+        while True:
             loop_start = time.time()
-	    try:
-		board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, landing_thrust, 1500, 1500, 1500, 1500, 1500])
-		time.sleep(dt - (loop_start - time.time()))
+            try:
+                board.sendCMD(16, MultiWii.SET_RAW_RC, [1500, 1500, landing_thrust, 1500, 1500, 1500, 1500, 1500])
+                time.sleep(dt - (loop_start - time.time()))
             except KeyboardInterrupt:
                 board.disarm()
-	        pixy_close()
-		break
-	break
+                pixy_close()
+                break
+        break
