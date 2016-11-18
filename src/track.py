@@ -7,11 +7,6 @@ from os import listdir
 from os.path import isfile, join
 import csv
 import time
-# PIXY DATA RANGE
-# Xmin == Ymin == 1
-# Xmax == 319
-# Ymax == 198
-
 
 def parseBlock(block):
     # RETURNS :
@@ -20,13 +15,28 @@ def parseBlock(block):
     #   - inv_size : the inverted size of the detected region. NOTE: This value
     #   is only assigned under the condition that the object is entirely within
     #   the frame or that it is detected as being too close to the pixy
-    size_thr = 0.0002 # Distance of about 3 feet from pixy
-    margin = 20
-    x = block.x
-    y = block.y
-    width = block.width + 1
-    height = block.height + 1
-    if 
+    size_thr = 0.0002 # Distance of about 3 feet from pixy with paper
+    margin = 12 # Number of pixels from edge that will signal out of frame
+
+    # Data range for pixy adjusted for the margin declaring out of frame
+    x_min = 1 + margin
+    y_min = 1 + margin
+    x_max == 319 - margin
+    y_max == 198 - margin
+
+    # edge boundaries of block
+    l_x = block.x - (block.width / 2);    #left
+    r_x = block.x + (block.width / 2);    #right
+    t_y = block.y - (block.height / 2);   #top
+    b_y = block.y + (block.height / 2);   #bottom
+
+    inv_size = 1.0 / ((block.width + 1) * (block.height + 1))
+    if (inv_size > size_thr) and ((l_x <= x_min) or (r_x >= xmax) or (t_y <= ymin) or (b_y >= ymax)):
+        inv_size = None
+
+    return [block.x, block.y, inv_size]
+
+
 
 FMT_STR = 'time=%.2f frame=%4d x=%3d y=%3d size_inv=%.7f roll=%4d pitch=%4d thrust=%4d yaw=%4d'
 pixy_init()
@@ -106,22 +116,15 @@ while True:
 
         count = pixy_get_blocks(1, blocks)
         if count > 0:
-            x = blocks[0].x
-            y = blocks[0].y
-            if x < xmin:
-                xmin = x
-            elif x > xmax:
-                xmax = x
-            if y < ymin:
-                ymin = y
-            elif y > ymax:
-                ymax = y
+            [x, y, size_inv] = parseBlock(blocks[0])
 
-            size_inv = 1.0/((blocks[0].width + 1) * (blocks[0].height + 1))
             roll = -roll_pid.get_output(x) + roll_offset
-            pitch = -pitch_pid.get_output(size_inv) + pitch_offset
             thrust = thrust_pid.get_output(y) + thrust_offset
             yaw = 1500
+            if size_inv is None:
+                pitch = pitch_offset
+            else:
+                pitch = -pitch_pid.get_output(size_inv) + pitch_offset
         else:
             x = None
             y = None
