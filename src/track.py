@@ -19,10 +19,10 @@ def parseBlock(block):
     margin = 12 # Number of pixels from edge that will signal out of frame
 
     # Data range for pixy adjusted for the margin declaring out of frame
-    x_min = 1 + margin
-    y_min = 1 + margin
-    x_max == 319 - margin
-    y_max == 198 - margin
+    xmin = 1 + margin
+    ymin = 1 + margin
+    xmax = 319 - margin
+    ymax = 198 - margin
 
     # edge boundaries of block
     l_x = block.x - (block.width / 2);    #left
@@ -31,7 +31,7 @@ def parseBlock(block):
     b_y = block.y + (block.height / 2);   #bottom
 
     inv_size = 1.0 / ((block.width + 1) * (block.height + 1))
-    if (inv_size > size_thr) and ((l_x <= x_min) or (r_x >= xmax) or (t_y <= ymin) or (b_y >= ymax)):
+    if (inv_size > size_thr) and ((l_x <= xmin) or (r_x >= xmax) or (t_y <= ymin) or (b_y >= ymax)):
         inv_size = None
 
     return [block.x, block.y, inv_size]
@@ -104,10 +104,6 @@ else:
     print 'Running script in SAFE MODE.'
 
 program_start = time.time()
-xmin = 999
-ymin = 999
-xmax = -1
-ymax = -1
 
 while True:
     try:
@@ -143,8 +139,6 @@ while True:
         time.sleep(dt - (loop_start - time.time()))
 
     except KeyboardInterrupt:
-        print 'xmin  ' + str(xmin) + ' ymin ' + str(ymin) + ' xmax '
-        print str(xmax) + ' ymax ' +  str(ymax)
         datafile.close()
         print 'Landing mode. Press CTRL+C to stop.'
         while True:
