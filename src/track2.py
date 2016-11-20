@@ -59,15 +59,15 @@ filename = 'data' + str(datanum) + '.csv'
 
 blocks = BlockArray(1)
 
-landing_thrust = 1312
-
 roll_offset = 1500              # center roll control value
 pitch_offset = 1494             # center pitch control value
-thrust_offset = 1344            # center thrust control value (~hover)
+thrust_offset = 1310            # center thrust control value (~hover)
 yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
 pixel_y_offset = 100            # center of screen on y-axis
 size_inv_offset = 0.003         # inverse of target size at ~2 meters distance
+landing_thrust = thrust_offset - 20
+
 dt = 0.02                       # 50 Hz refresh rate
 
 R_KP = 2.0
@@ -87,11 +87,11 @@ pitch_pid = Pid(P_KP, P_KI, P_KD)
 pitch_pid.set_limit(2)
 pitch_pid.set_reference(size_inv_offset)
 
-T_KP = 0.19
-T_KI = 0.1
-T_KD = 0.08
+T_KP = 0.9
+T_KI = 0.20
+T_KD = 0.09
 thrust_pid = Pid(T_KP, T_KI, T_KD)
-thrust_pid.set_limit(25)
+thrust_pid.set_limit(30)
 thrust_pid.set_reference(pixel_y_offset)
 
 Y_KP = 1.0
