@@ -44,6 +44,6 @@ class Pid():
             else:
                 b = sum(self.store[tmp + 1 - self.n / 2:tmp + 1])
                 a = sum(self.store) - b
-            return self.Kd * (a - b)
+            return self.Kd * (b - a)
         else:
             return 0
