@@ -7,6 +7,7 @@ from os import listdir
 from os.path import isfile, join
 import csv
 import time
+import collections
 
 def parseBlock(block):
     # RETURNS :
@@ -60,19 +61,17 @@ csvwriter.writerow(['time', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'ya
 blocks = BlockArray(1)
 
 roll_offset = 1500              # center roll control value
-pitch_offset = 1502             # center pitch control value
+pitch_offset = 1494             # center pitch control value
 thrust_offset = 1300            # center thrust control value (~hover)
 yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
 pixel_y_offset = 100            # center of screen on y-axis
 size_inv_offset = 0.003         # inverse of target size at ~2 meters distance
-landing_thrust = thrust_offset - 25
+landing_thrust = thrust_offset - 12
 
-dt = 0.02                       # 50 Hz refresh rate
-
-R_KP = 0.2
-R_KI = 0.015
-R_KD = 2.2
+R_KP = 0.0
+R_KI = 1.10
+R_KD = 0.0
 roll_pid = Pid(R_KP, R_KI, R_KD)
 roll_pid.set_limit(20)
 roll_pid.set_reference(pixel_x_offset)
@@ -94,13 +93,15 @@ thrust_pid = Pid(T_KP, T_KI, T_KD)
 thrust_pid.set_limit(50)
 thrust_pid.set_reference(pixel_y_offset)
 
-#Y_KP = 1.0
-Y_KP = 0.0
+Y_KP = 1.0
+#Y_KP = 0.0
 Y_KI = 0.0
 Y_KD = 0.0
 yaw_pid = Pid(Y_KP, Y_KI, Y_KD)
 yaw_pid.set_limit(20)
 yaw_pid.set_reference(pixel_x_offset)
+
+dt = 0.02                       # 50 Hz refresh rate
 
 if len(argv) > 1 and argv[1] == 'ARM':
     board.arm()
@@ -108,6 +109,12 @@ if len(argv) > 1 and argv[1] == 'ARM':
 else:
     print 'Running script in SAFE MODE.'
 
+print [[R_KP, R_KI, R_KD], 
+       [P_KP, P_KI, P_KD], 
+       [T_KP, T_KI, T_KD], 
+       [Y_KP, Y_KI, Y_KD]]
+
+d = collections.deque(maxlen=3)    # circular buffer for target area
 program_start = time.time()
 pitch = pitch_offset  #TODO added for pitch hold testing
 while True:
@@ -130,10 +137,6 @@ while True:
             size_inv = None
             roll = -roll_pid.get_output(pixel_x_offset) + roll_offset
             pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
-            if pitch != pitch_offset:
-                pitch = pitch_offset
-            else:
-                pitch = pitch_offset+1
             thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
             yaw = -yaw_pid.get_output(pixel_x_offset) + yaw_offset
 
