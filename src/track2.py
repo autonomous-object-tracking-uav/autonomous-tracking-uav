@@ -53,26 +53,26 @@ if len(filenames) != 0:
 else:
         datanum = 0
 filename = 'data' + str(datanum) + '.csv'
-#TODO datafile = open(join(path, filename), 'wb')
-#TODO csvwriter = csv.writer(datafile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-#TODO csvwriter.writerow(['time', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'yaw'])
+datafile = open(join(path, filename), 'wb')
+csvwriter = csv.writer(datafile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+csvwriter.writerow(['time', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'yaw'])
 
 blocks = BlockArray(1)
 
 roll_offset = 1500              # center roll control value
-pitch_offset = 1494             # center pitch control value
-thrust_offset = 1310            # center thrust control value (~hover)
+pitch_offset = 1502             # center pitch control value
+thrust_offset = 1300            # center thrust control value (~hover)
 yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
 pixel_y_offset = 100            # center of screen on y-axis
 size_inv_offset = 0.003         # inverse of target size at ~2 meters distance
-landing_thrust = thrust_offset - 20
+landing_thrust = thrust_offset - 25
 
 dt = 0.02                       # 50 Hz refresh rate
 
-R_KP = 2.0
-R_KI = 1.0
-R_KD = 0.0
+R_KP = 0.2
+R_KI = 0.015
+R_KD = 2.2
 roll_pid = Pid(R_KP, R_KI, R_KD)
 roll_pid.set_limit(20)
 roll_pid.set_reference(pixel_x_offset)
@@ -87,14 +87,15 @@ pitch_pid = Pid(P_KP, P_KI, P_KD)
 pitch_pid.set_limit(2)
 pitch_pid.set_reference(size_inv_offset)
 
-T_KP = 0.9
-T_KI = 0.20
-T_KD = 0.09
+T_KP = 1.2
+T_KI = 0.04
+T_KD = 1.4
 thrust_pid = Pid(T_KP, T_KI, T_KD)
-thrust_pid.set_limit(30)
+thrust_pid.set_limit(50)
 thrust_pid.set_reference(pixel_y_offset)
 
-Y_KP = 1.0
+#Y_KP = 1.0
+Y_KP = 0.0
 Y_KI = 0.0
 Y_KD = 0.0
 yaw_pid = Pid(Y_KP, Y_KI, Y_KD)
@@ -117,10 +118,10 @@ while True:
             [x, y, size_inv_t] = parseBlock(blocks[0])
             size_inv = 1.0 / ((blocks[0].width + 1) * (blocks[0].height + 1))
             roll = -roll_pid.get_output(x) + roll_offset
-#TODO            pitch = -pitch_pid.get_output(size_inv) + pitch_offset
+            pitch = -pitch_pid.get_output(size_inv) + pitch_offset
             thrust = thrust_pid.get_output(y) + thrust_offset
             yaw = -yaw_pid.get_output(x) + yaw_offset
-            pitch = pitch_offset if pitch!=pitch_offset else pitch+1
+#            pitch = pitch_offset if pitch!=pitch_offset else pitch+1
 #TODO SAVE FOR TESTING PITCH C            if size_inv_t is None:
 #TODO                print 'OUT OF BOUNDS'
         else:
@@ -138,8 +139,7 @@ while True:
 
         data = [time.time() - program_start, x, y, size_inv, roll, pitch, thrust, yaw]
         print 'time=%.2f x=%3d y=%3d size_inv=%.4f roll=%4d pitch=%4d thrust=%4d yaw=%4d' % tuple([0.0 if x is None else x for x in data])
-#TODO        csvwriter.writerow(data)
-#        command = [roll, pitch, thrust, yaw, 1500, 1500, 1500, 1500]
+        csvwriter.writerow(data)
         command = [roll, pitch, thrust, yaw]
         board.sendCMD(8, MultiWii.SET_RAW_RC, command)
         time.sleep(dt - (loop_start - time.time()))
@@ -159,7 +159,7 @@ while True:
                                                         1500])
                 time.sleep(dt - (loop_start - time.time()))
             except KeyboardInterrupt:
-#TODO                datafile.close()
+                datafile.close()
                 board.disarm()
                 pixy_close()
                 break
