@@ -8,6 +8,8 @@ from os.path import isfile, join
 import csv
 import time
 import collections
+import numpy as np
+import sys
 
 def parseBlock(block):
     # RETURNS :
@@ -69,6 +71,7 @@ pixel_y_offset = 100            # center of screen on y-axis
 size_inv_offset = 0.003         # inverse of target size at ~2 meters distance
 landing_thrust = thrust_offset - 12
 
+# Roll values
 R_KP = 0.0
 R_KI = 1.10
 R_KD = 0.0
@@ -76,6 +79,11 @@ roll_pid = Pid(R_KP, R_KI, R_KD)
 roll_pid.set_limit(20)
 roll_pid.set_reference(pixel_x_offset)
 
+# Pitch values
+P_BUFF_LIM = 3      # Size of circular buffer for size_inv values
+sys.maxint
+pitch_buff = np.full(sys.maxint, BUFF_LIM)
+p_i = 0             # Buffer index
 #P_KP = 1000
 #P_KI = 50
 #P_KD = 2200
@@ -86,6 +94,7 @@ pitch_pid = Pid(P_KP, P_KI, P_KD)
 pitch_pid.set_limit(2)
 pitch_pid.set_reference(size_inv_offset)
 
+# Thrust values
 T_KP = 1.2
 T_KI = 0.04
 T_KD = 1.4
@@ -93,6 +102,7 @@ thrust_pid = Pid(T_KP, T_KI, T_KD)
 thrust_pid.set_limit(50)
 thrust_pid.set_reference(pixel_y_offset)
 
+# Yaw values
 Y_KP = 1.0
 #Y_KP = 0.0
 Y_KI = 0.0
@@ -114,7 +124,6 @@ print [[R_KP, R_KI, R_KD],
        [T_KP, T_KI, T_KD], 
        [Y_KP, Y_KI, Y_KD]]
 
-d = collections.deque(maxlen=3)    # circular buffer for target area
 program_start = time.time()
 pitch = pitch_offset  #TODO added for pitch hold testing
 while True:
@@ -122,13 +131,18 @@ while True:
         loop_start = time.time()
         count = pixy_get_blocks(1, blocks)
         if count > 0:
+            # Detection successful. Calculate axis vlues to be sent to FC
             [x, y, size_inv_t] = parseBlock(blocks[0])
-            size_inv = 1.0 / ((blocks[0].width + 1) * (blocks[0].height + 1))
+#            size_inv = 1.0 / ((blocks[0].width + 1) * (blocks[0].height + 1))
             roll = -roll_pid.get_output(x) + roll_offset
-            pitch = -pitch_pid.get_output(size_inv) + pitch_offset
             thrust = thrust_pid.get_output(y) + thrust_offset
             yaw = -yaw_pid.get_output(x) + yaw_offset
-#            pitch = pitch_offset if pitch!=pitch_offset else pitch+1
+            # Due to pixy noise, best reading of size will be the smallest
+            # inverse size value 
+            pitch_buff[p_i] = pitch
+            pitch = min(pitch_buff)
+            pitch = -pitch_pid.get_output(size_inv_t) + pitch_offset
+            p_i = (p_i + 1) % P_BUFF_LEN
 #TODO SAVE FOR TESTING PITCH C            if size_inv_t is None:
 #TODO                print 'OUT OF BOUNDS'
         else:
