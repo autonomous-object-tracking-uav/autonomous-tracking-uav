@@ -68,7 +68,7 @@ thrust_offset = 1300            # center thrust control value (~hover)
 yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
 pixel_y_offset = 100            # center of screen on y-axis
-size_inv_offset = 0.003         # inverse of target size at ~2 meters distance
+size_inv_offset = 0.002         # inverse of target size at ~2 meters distance
 landing_thrust = thrust_offset - 12
 
 # Roll values
@@ -82,7 +82,7 @@ roll_pid.set_reference(pixel_x_offset)
 # Pitch values
 P_BUFF_LIM = 3      # Size of circular buffer for size_inv values
 sys.maxint
-pitch_buff = np.full(sys.maxint, BUFF_LIM)
+pitch_buff = np.full(P_BUFF_LIM, sys.maxint)
 p_i = 0             # Buffer index
 #P_KP = 1000
 #P_KI = 50
@@ -132,17 +132,20 @@ while True:
         count = pixy_get_blocks(1, blocks)
         if count > 0:
             # Detection successful. Calculate axis vlues to be sent to FC
-            [x, y, size_inv_t] = parseBlock(blocks[0])
-#            size_inv = 1.0 / ((blocks[0].width + 1) * (blocks[0].height + 1))
+            [x, y, size_inv] = parseBlock(blocks[0])
+#            size_inv_t = 1.0 / ((blocks[0].width + 1) * (blocks[0].height + 1))
             roll = -roll_pid.get_output(x) + roll_offset
             thrust = thrust_pid.get_output(y) + thrust_offset
             yaw = -yaw_pid.get_output(x) + yaw_offset
             # Due to pixy noise, best reading of size will be the smallest
             # inverse size value 
-            pitch_buff[p_i] = pitch
-            pitch = min(pitch_buff)
-            pitch = -pitch_pid.get_output(size_inv_t) + pitch_offset
-            p_i = (p_i + 1) % P_BUFF_LEN
+            if size_inv is None:
+                pitch_buff[p_i] = size_inv
+                size_inv = min(pitch_buff)
+                pitch = -pitch_pid.get_output(size_inv) + pitch_offset
+                p_i = (p_i + 1) % P_BUFF_LEN
+            else:
+                pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
 #TODO SAVE FOR TESTING PITCH C            if size_inv_t is None:
 #TODO                print 'OUT OF BOUNDS'
         else:
