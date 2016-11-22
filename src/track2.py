@@ -43,7 +43,6 @@ def parseBlock(block):
     
     if not_too_close and (out_of_x or out_of_y): 
         inv_size = None
-
     return [block.x, block.y, inv_size]
 
 pixy_init()
@@ -63,35 +62,35 @@ csvwriter.writerow(['time', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'ya
 blocks = BlockArray(1)
 
 roll_offset = 1500              # center roll control value
-pitch_offset = 1494             # center pitch control value
+pitch_offset = 1505             # center pitch control value
 thrust_offset = 1300            # center thrust control value (~hover)
 yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
 pixel_y_offset = 100            # center of screen on y-axis
-size_inv_offset = 0.002         # inverse of target size at ~2 meters distance
+size_inv_offset = 0.004         # inverse of target size at ~2 meters distance
 landing_thrust = thrust_offset - 12
 
 # Roll values
 R_KP = 0.0
-R_KI = 1.10
+R_KI = 1.00
 R_KD = 0.0
 roll_pid = Pid(R_KP, R_KI, R_KD)
 roll_pid.set_limit(20)
 roll_pid.set_reference(pixel_x_offset)
 
 # Pitch values
-P_BUFF_LIM = 3      # Size of circular buffer for size_inv values
-sys.maxint
-pitch_buff = np.full(P_BUFF_LIM, sys.maxint)
-p_i = 0             # Buffer index
-#P_KP = 1000
-#P_KI = 50
-#P_KD = 2200
-P_KP = 4
+P_BUFF_LEN = 3      # Size of circular buffer for size_inv values
+sys.maxintpitch_buff = np.full(P_BUFF_LEN, sys.maxint)
+pitch_buff = np.full(P_BUFF_LEN, sys.maxint)
+p_i = 0
+P_KP = 0
 P_KI = 0
 P_KD = 0
+#P_KP = 4000
+#P_KI = 0
+#P_KD = 2000
 pitch_pid = Pid(P_KP, P_KI, P_KD)
-pitch_pid.set_limit(5)
+pitch_pid.set_limit(15)
 pitch_pid.set_reference(size_inv_offset)
 
 # Thrust values
@@ -139,7 +138,7 @@ while True:
             yaw = -yaw_pid.get_output(x) + yaw_offset
             # Due to pixy noise, best reading of size will be the smallest
             # inverse size value 
-            if size_inv is None:
+            if size_inv is not None:
                 pitch_buff[p_i] = size_inv
                 size_inv = min(pitch_buff)
                 pitch = -pitch_pid.get_output(size_inv) + pitch_offset
