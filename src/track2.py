@@ -87,11 +87,11 @@ p_i = 0             # Buffer index
 #P_KP = 1000
 #P_KI = 50
 #P_KD = 2200
-P_KP = 0
+P_KP = 4
 P_KI = 0
 P_KD = 0
 pitch_pid = Pid(P_KP, P_KI, P_KD)
-pitch_pid.set_limit(2)
+pitch_pid.set_limit(5)
 pitch_pid.set_reference(size_inv_offset)
 
 # Thrust values
