@@ -50,13 +50,17 @@ def parseBlock(block):
     dist = (F_STOP * TARG_HEIGHT * IMG_HEIGHT) / (block.height * SENS_HEIGHT) 
 
 #    not_too_close = inv_size > size_thr
-    not_too_close = dist < min_dist
+    not_too_close = dist > min_dist
     out_of_x = (l_x <= xmin) or (r_x >= xmax)
     out_of_y = (t_y <= ymin) or (b_y >= ymax)
     
     if not_too_close and (out_of_x or out_of_y): 
 #TODO        inv_size = None
+        print 'PARTIALLY OUT OF FRAME'
         dist = None
+    if dist > 20000:
+        print block.height
+        print block.width
     return [block.x, block.y, dist]
 
 pixy_init()
@@ -76,14 +80,14 @@ csvwriter.writerow(['time', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'ya
 blocks = BlockArray(1)
 
 roll_offset = 1500              # center roll control value
-pitch_offset = 1500             # center pitch control value
+pitch_offset = 1505             # center pitch control value
 thrust_offset = 1300            # center thrust control value (~hover)
 yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
 pixel_y_offset = 100            # center of screen on y-axis
 #size_inv_offset = 0.004         # inverse of target size at ~2 meters distance
 dist_offset = 3500
-landing_thrust = thrust_offset - 19
+landing_thrust = thrust_offset - 10
 
 # Roll values
 #R_KP = 0.0
@@ -91,19 +95,19 @@ landing_thrust = thrust_offset - 19
 #R_KD = 0.0
 R_KP = 0.2
 R_KI = 0.015
-R_KD = 2.2
+R_KD = 2.8
 roll_pid = Pid(R_KP, R_KI, R_KD)
 roll_pid.set_limit(20)
 roll_pid.set_reference(pixel_x_offset)
 
 # Pitch values
 P_BUFF_LEN = 5      # Size of circular buffer for size_inv values
-sys.maxintpitch_buff = np.full(P_BUFF_LEN, sys.maxint)
-pitch_buff = np.full(P_BUFF_LEN, sys.maxint)
+pitch_buff = np.full(P_BUFF_LEN, -1)
+#TODO pitch_buff = np.full(P_BUFF_LEN, sys.maxint)
 p_i = 0
-#P_KP = 0
-#P_KI = 0
-#P_KD = 0
+P_KP = 0
+P_KI = 0
+P_KD = 0
 #SIZE_INV_VALUES!! DO NOT USE WITH DISTANCE!!!
 #P_KP = 1000.0
 #P_KI = 510
@@ -111,24 +115,27 @@ p_i = 0
 #P_KP = 3000 
 #P_KI = 300
 #P_KD = 0
+#DIST VALUES
 P_KP = .01
 P_KI = 0
-P_KD = 0
+P_KD = .02
 
 # Added for holding pitch
 while pixy_get_blocks(1, blocks) == 0:
     print 'Attempting to lock distance'
 [x, y, dist] = parseBlock(blocks[0])
 dist_offset = dist
-
 pitch_pid = Pid(P_KP, P_KI, P_KD)
-pitch_pid.set_limit(18)
+pitch_pid.set_limit(30)
 pitch_pid.set_reference(dist_offset)
 
 # Thrust values
 T_KP = 1.2
 T_KI = 0.04
 T_KD = 1.4
+#T_KP = 2.5
+#T_KI = 0.29
+#T_KD = 2.7
 thrust_pid = Pid(T_KP, T_KI, T_KD)
 thrust_pid.set_limit(50)
 thrust_pid.set_reference(pixel_y_offset)
@@ -177,7 +184,8 @@ while True:
                 pitch = -pitch_pid.get_output(dist) + pitch_offset
                 p_i = (p_i + 1) % P_BUFF_LEN
             else:
-                pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
+                pitch = -pitch_pid.get_output(dist_offset) + pitch_offset
+                #TODO pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
 #TODO SAVE FOR TESTING PITCH C            if size_inv_t is None:
 #TODO                print 'OUT OF BOUNDS'
         else:
