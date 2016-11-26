@@ -20,6 +20,8 @@ IMG_WIDTH = 320.0     # pixels
 SENS_RATIO = IMG_WIDTH / IMG_HEIGHT
 TARG_HEIGHT = 355.6
 SENS_HEIGHT = pow(pow(SENS_DIAG, 2)  / (pow(SENS_RATIO, 2) + 1), .5)
+V_FOV = 47          # Vertical field of view %
+DEG_PPX = IMG_HEIGHT / V_FOV    # % per pixel
 
 def parseBlock(block):
     # RETURNS :
@@ -80,14 +82,14 @@ csvwriter.writerow(['time', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'ya
 blocks = BlockArray(1)
 
 roll_offset = 1500              # center roll control value
-pitch_offset = 1505             # center pitch control value
+pitch_offset = 1493             # center pitch control value
 thrust_offset = 1300            # center thrust control value (~hover)
 yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
 pixel_y_offset = 100            # center of screen on y-axis
 #size_inv_offset = 0.004         # inverse of target size at ~2 meters distance
-dist_offset = 3500
-landing_thrust = thrust_offset - 10
+dist_offset = 4696              # The output distance comes in discrete steps
+landing_thrust = thrust_offset - 15
 
 # Roll values
 #R_KP = 0.0
@@ -101,9 +103,7 @@ roll_pid.set_limit(20)
 roll_pid.set_reference(pixel_x_offset)
 
 # Pitch values
-P_BUFF_LEN = 5      # Size of circular buffer for size_inv values
-pitch_buff = np.full(P_BUFF_LEN, -1)
-#TODO pitch_buff = np.full(P_BUFF_LEN, sys.maxint)
+P_BUFF_LEN = 10      # Size of circular buffer for size_inv values
 p_i = 0
 P_KP = 0
 P_KI = 0
@@ -116,9 +116,9 @@ P_KD = 0
 #P_KI = 300
 #P_KD = 0
 #DIST VALUES
-P_KP = .01
-P_KI = 0
-P_KD = .02
+P_KP = 0.005
+P_KI = 0.001
+P_KD = 0.04
 
 # Added for holding pitch
 while pixy_get_blocks(1, blocks) == 0:
@@ -128,6 +128,9 @@ dist_offset = dist
 pitch_pid = Pid(P_KP, P_KI, P_KD)
 pitch_pid.set_limit(30)
 pitch_pid.set_reference(dist_offset)
+pitch_buff = np.full(P_BUFF_LEN, dist)
+#TODO pitch_buff = np.full(P_BUFF_LEN, sys.maxint)
+cum_pitch = sum(pitch_buff)
 
 # Thrust values
 T_KP = 1.2
@@ -168,9 +171,13 @@ while True:
     try:
         loop_start = time.time()
         count = pixy_get_blocks(1, blocks)
+        # calculate the y offset given current pitch
+        board.getData(MultiWii.ATTITUDE)
+        y_off = board.attitude['angy'] / DEG_PPX
         if count > 0:
             # Detection successful. Calculate axis vlues to be sent to FC
             [x, y, dist] = parseBlock(blocks[0])
+            y = y - y_off
 #            size_inv = 1.0 / ((blocks[0].width + 1) * (blocks[0].height + 1))
             roll = -roll_pid.get_output(x) + roll_offset
             thrust = thrust_pid.get_output(y) + thrust_offset
@@ -178,9 +185,12 @@ while True:
             # Due to pixy noise, best reading of size will be the smallest
             # inverse size value 
             if dist is not None:
+                cum_pitch = cum_pitch + (dist - pitch_buff[p_i])
                 pitch_buff[p_i] = dist
                 #size_inv = min(pitch_buff)
-                dist = max(pitch_buff)
+                #dist = min(pitch_buff)
+#                dist = np.mean(pitch_buff)
+                dist = cum_pitch / P_BUFF_LEN
                 pitch = -pitch_pid.get_output(dist) + pitch_offset
                 p_i = (p_i + 1) % P_BUFF_LEN
             else:

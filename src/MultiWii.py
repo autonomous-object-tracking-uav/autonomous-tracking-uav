@@ -148,6 +148,8 @@ class MultiWii:
             self.attitude['heading']=float(temp[2])
             self.attitude['elapsed']=round(elapsed,3)
             self.attitude['timestamp']="%0.2f" % (time.time(),) 
+            print 'hi'
+            print self.attitude['angx']
             return self.attitude
         except Exception, error:
             #print "\n\nError in sendCMDreceiveATT."
