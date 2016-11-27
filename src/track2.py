@@ -20,8 +20,8 @@ IMG_WIDTH = 320.0     # pixels
 SENS_RATIO = IMG_WIDTH / IMG_HEIGHT
 TARG_HEIGHT = 355.6
 SENS_HEIGHT = pow(pow(SENS_DIAG, 2)  / (pow(SENS_RATIO, 2) + 1), .5)
-V_FOV = 47          # Vertical field of view %
-DEG_PPX = IMG_HEIGHT / V_FOV    # % per pixel
+Y_FOV = 47          # Vertical field of view %
+DEG_PPX_Y = IMG_HEIGHT / Y_FOV    # % per pixel 
 
 def parseBlock(block):
     # RETURNS :
@@ -88,16 +88,16 @@ yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
 pixel_y_offset = 100            # center of screen on y-axis
 #size_inv_offset = 0.004         # inverse of target size at ~2 meters distance
-dist_offset = 4696              # The output distance comes in discrete steps
-landing_thrust = thrust_offset - 15
+dist_offset = 2157              # The output distance comes in discrete steps
+landing_thrust = thrust_offset - 18
 
 # Roll values
 #R_KP = 0.0
 #R_KI = 0.90
 #R_KD = 0.0
-R_KP = 0.2
-R_KI = 0.015
-R_KD = 2.8
+R_KP = 0.2      #Lebel--  0.4
+R_KI = 0.03
+R_KD = 2.2  
 roll_pid = Pid(R_KP, R_KI, R_KD)
 roll_pid.set_limit(20)
 roll_pid.set_reference(pixel_x_offset)
@@ -105,9 +105,9 @@ roll_pid.set_reference(pixel_x_offset)
 # Pitch values
 P_BUFF_LEN = 10      # Size of circular buffer for size_inv values
 p_i = 0
-P_KP = 0
-P_KI = 0
-P_KD = 0
+#P_KP = 0
+#P_KI = 0
+#P_KD = 0
 #SIZE_INV_VALUES!! DO NOT USE WITH DISTANCE!!!
 #P_KP = 1000.0
 #P_KI = 510
@@ -117,34 +117,34 @@ P_KD = 0
 #P_KD = 0
 #DIST VALUES
 P_KP = 0.005
-P_KI = 0.001
-P_KD = 0.04
+P_KI = 0  #.0005
+P_KD = 0.03
 
 # Added for holding pitch
 while pixy_get_blocks(1, blocks) == 0:
     print 'Attempting to lock distance'
 [x, y, dist] = parseBlock(blocks[0])
-dist_offset = dist
+#dist_offset = dist
 pitch_pid = Pid(P_KP, P_KI, P_KD)
-pitch_pid.set_limit(30)
+pitch_pid.set_limit(40)
 pitch_pid.set_reference(dist_offset)
 pitch_buff = np.full(P_BUFF_LEN, dist)
 #TODO pitch_buff = np.full(P_BUFF_LEN, sys.maxint)
 cum_pitch = sum(pitch_buff)
 
 # Thrust values
-T_KP = 1.2
+T_KP = 1.2 
 T_KI = 0.04
-T_KD = 1.4
+T_KD = 1.4 
 #T_KP = 2.5
 #T_KI = 0.29
 #T_KD = 2.7
 thrust_pid = Pid(T_KP, T_KI, T_KD)
-thrust_pid.set_limit(50)
+thrust_pid.set_limit(50)    # was 50
 thrust_pid.set_reference(pixel_y_offset)
 
 # Yaw values
-#Y_KP = 1.0
+#Y_KP = 0.05
 Y_KP = 0.0
 Y_KI = 0.0
 Y_KD = 0.0
@@ -173,7 +173,7 @@ while True:
         count = pixy_get_blocks(1, blocks)
         # calculate the y offset given current pitch
         board.getData(MultiWii.ATTITUDE)
-        y_off = board.attitude['angy'] / DEG_PPX
+        y_off = board.attitude['angy'] / DEG_PPX_Y
         if count > 0:
             # Detection successful. Calculate axis vlues to be sent to FC
             [x, y, dist] = parseBlock(blocks[0])
@@ -194,7 +194,7 @@ while True:
                 pitch = -pitch_pid.get_output(dist) + pitch_offset
                 p_i = (p_i + 1) % P_BUFF_LEN
             else:
-                pitch = -pitch_pid.get_output(dist_offset) + pitch_offset
+                pitch = pitch_offset - 15
                 #TODO pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
 #TODO SAVE FOR TESTING PITCH C            if size_inv_t is None:
 #TODO                print 'OUT OF BOUNDS'
@@ -208,8 +208,11 @@ while True:
             yaw = -yaw_pid.get_output(pixel_x_offset) + yaw_offset
 
         data = [time.time() - program_start, x, y, dist, roll, pitch, thrust, yaw]
-        print 'time=%.2f x=%3d y=%3d dist=%4d roll=%4d pitch=%4d thrust=%4d yaw=%4d' % tuple([0.0 if x is None else x for x in data])
-        csvwriter.writerow(data)
+        try:
+            print 'time=%.2f x=%3d y=%3d dist=%4d roll=%4d pitch=%4d thrust=%4d yaw=%4d' % tuple([0.0 if x is None else x for x in data])
+            csvwriter.writerow(data)
+        except TypeError:
+            print 'Bad digit in print'
         command = [roll, pitch, thrust, yaw]
         board.sendCMD(8, MultiWii.SET_RAW_RC, command)
         time.sleep(dt - (loop_start - time.time()))
