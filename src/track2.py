@@ -82,7 +82,7 @@ blocks = BlockArray(1)
 roll_offset = 1500              # center roll control value
 
 #pitch_offset = 1493             # center pitch control value
-pitch_offset = 1503
+pitch_offset = 1507
 thrust_offset = 1300            # center thrust control value (~hover)
 yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
