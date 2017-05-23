@@ -32,7 +32,6 @@ def parseBlock(block):
     #   is only assigned under the condition that the object is entirely
     #   within
     #   the frame or that it is detected as being too close to the pixy
-#TODO    size_thr = 0.0002 # Distance of about 3 feet from pixy with paper
     min_dist = 1300
     margin = 4 # Number of pixels from edge that will signal out of frame
              
@@ -48,16 +47,13 @@ def parseBlock(block):
     t_y = block.y - (block.height / 2);   #top
     b_y = block.y + (block.height / 2);   #bottom
 
-#TODO    inv_size = 1.0 / ((block.width + 1) * (block.height + 1))
     dist = (F_STOP * TARG_HEIGHT * IMG_HEIGHT) / (block.height * SENS_HEIGHT) 
 
-#    not_too_close = inv_size > size_thr
     not_too_close = dist > min_dist
     out_of_x = (l_x <= xmin) or (r_x >= xmax)
     out_of_y = (t_y <= ymin) or (b_y >= ymax)
     
     if not_too_close and (out_of_x or out_of_y): 
-#TODO        inv_size = None
         print 'PARTIALLY OUT OF FRAME'
         dist = None
     return [block.x, block.y, dist]
@@ -91,14 +87,23 @@ pixel_y_offset = 100            # center of screen on y-axis
 dist_offset = 2100              # The output distance comes in discrete steps
 landing_thrust = thrust_offset - 24
 
+# Thrust values
+T_KP = 1.2 
+T_KI = 0.04
+T_KD = 1.4 
+thrust_pid = Pid(T_KP, T_KI, T_KD)
+thrust_pid.set_limit(50)    # was 50
+thrust_pid.set_reference(pixel_y_offset)
+
+# Yaw values
+Y_KI = 0.0
+Y_KD = 0.0
+Y_KP = 1.0
+yaw_pid = Pid(Y_KP, Y_KI, Y_KD)
+yaw_pid.set_limit(20)
+yaw_pid.set_reference(pixel_x_offset)
+
 # Roll values
-#R_KP = 0.0
-#R_KI = 0.0
-#R_KD = 0.0
-#R_KP = 0.2      #Lebel--  0.4
-#R_KI = 0.03
-#R_KD = 2.2
-# VALUES FROM FIRST HALLWAY TEST
 R_KP = 2.0
 R_KI = 1.0
 R_KD = 0.0
@@ -112,51 +117,23 @@ p_i = 0
 P_KP = 0
 P_KI = 0
 P_KD = 0
-#SIZE_INV_VALUES!! DO NOT USE WITH DISTANCE!!!
-#P_KP = 1000.0
-#P_KI = 510
-#P_KD = 10000.0
-#P_KP = 3000 
-#P_KI = 300
-#P_KD = 0
-#DIST VALUES
-#P_KP = 0.0045
-#P_KI = 0    #.0005
-#P_KD = 0.04
+
+# Dist values
+P_KP = 0.0045
+P_KI = 0    #.0005
+P_KD = 0.04
 
 # Added for holding pitch
 while pixy_get_blocks(1, blocks) == 0:
     print 'Attempting to lock distance'
 [x, y, dist] = parseBlock(blocks[0])
-#dist_offset = dist
+dist_offset = dist
 pitch_pid = Pid(P_KP, P_KI, P_KD)
 pitch_pid.set_limit(40)
 pitch_pid.set_reference(dist_offset)
 pitch_buff = np.full(P_BUFF_LEN, dist)
 #TODO pitch_buff = np.full(P_BUFF_LEN, sys.maxint)
 cum_pitch = sum(pitch_buff)
-
-# Thrust values
-T_KP = 1.2 
-T_KI = 0.04
-T_KD = 1.4 
-#T_KP = 2.5
-#T_KI = 0.29
-#T_KD = 2.7
-thrust_pid = Pid(T_KP, T_KI, T_KD)
-thrust_pid.set_limit(50)    # was 50
-thrust_pid.set_reference(pixel_y_offset)
-
-# Yaw values
-#Y_KP = 0.004
-#Y_KP = 0.0
-Y_KI = 0.0
-Y_KD = 0.0
-# VALUES FROM FIRST HALLWAY TEST
-Y_KP = 1.0
-yaw_pid = Pid(Y_KP, Y_KI, Y_KD)
-yaw_pid.set_limit(20)
-yaw_pid.set_reference(pixel_x_offset)
 
 dt = 0.02                       # 50 Hz refresh rate
 
@@ -184,26 +161,20 @@ while True:
             # Detection successful. Calculate axis vlues to be sent to FC
             [x, y, dist] = parseBlock(blocks[0])
             y = y - y_off
-#            size_inv = 1.0 / ((blocks[0].width + 1) * (blocks[0].height + 1))
             roll = -roll_pid.get_output(x) + roll_offset
             thrust = thrust_pid.get_output(y) + thrust_offset
             yaw = -yaw_pid.get_output(x) + yaw_offset
-            # Due to pixy noise, best reading of size will be the smallest
-            # inverse size value 
+            # Due to pixy noise, best reading of size will be the smallest buffer val 
             if dist is not None:
                 cum_pitch = cum_pitch + (dist - pitch_buff[p_i])
                 pitch_buff[p_i] = dist
-                #size_inv = min(pitch_buff)
                 #dist = min(pitch_buff)
-#                dist = np.mean(pitch_buff)
+                #dist = np.mean(pitch_buff)
                 dist = cum_pitch / P_BUFF_LEN
                 pitch = -pitch_pid.get_output(dist) + pitch_offset
                 p_i = (p_i + 1) % P_BUFF_LEN
             else:
                 pitch = pitch_offset - 15
-                #TODO pitch = -pitch_pid.get_output(size_inv_offset) + pitch_offset
-#TODO SAVE FOR TESTING PITCH C            if size_inv_t is None:
-#TODO                print 'OUT OF BOUNDS'
         else:
             dist = None
             x = None
