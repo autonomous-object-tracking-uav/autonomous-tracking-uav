@@ -23,6 +23,19 @@ SENS_HEIGHT = pow(pow(SENS_DIAG, 2)  / (pow(SENS_RATIO, 2) + 1), .5)
 Y_FOV = 47                          # Vertical field of view %
 DEG_PPX_Y = IMG_HEIGHT / Y_FOV      # % per pixel
 
+def sendCommandsToPi(commands, board):
+    try:
+        board.sendCMD(8, MultiWii.SET_RAW_RC, command)
+    except:
+        print 'Command not sent'
+
+def logAndPrintCommands(data, csvwriter):
+    try:
+        print 'time=%.2f x=%3d y=%3d dist=%4d roll=%4d pitch=%4d thrust=%4d yaw=%4d' % tuple([0.0 if x is None else x for x in data])
+        csvwriter.writerow(data)
+    except TypeError:
+        print 'Bad digit in print'
+
 def parseBlock(block):
     # RETURNS :
     # [x, y, inv_size]
@@ -62,14 +75,14 @@ blocks = BlockArray(1)                  # array for camera output
 board = MultiWii('/dev/ttyUSB0')        # connect arduino
 
 # set up data logging
-path = '/home/pi/anti-drone-system/data'
-filenames = [x for x in listdir(path) if isfile(join(path, x))]
+PATH = '/home/pi/anti-drone-system/data'
+filenames = [x for x in listdir(PATH) if isfile(join(PATH, x))]
 if len(filenames) != 0:
         datanum = max([int(x[4:-4]) for x in filenames]) + 1
 else:
         datanum = 0
 filename = 'data' + str(datanum) + '.csv'
-datafile = open(join(path, filename), 'wb')
+datafile = open(join(PATH, filename), 'wb')
 csvwriter = csv.writer(datafile, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 csvwriter.writerow(['time', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'yaw'])
 print 'filename=' + filename
@@ -175,17 +188,11 @@ while True:
             yaw = -yaw_pid.get_output(PIXEL_X_OFFSET) + YAW_OFFSET
 
         data = [time.time() - program_start, x, y, dist, roll, pitch, thrust, yaw]
-        
-        try:
-            print 'time=%.2f x=%3d y=%3d dist=%4d roll=%4d pitch=%4d thrust=%4d yaw=%4d' % tuple([0.0 if x is None else x for x in data])
-            csvwriter.writerow(data)
-        except TypeError:
-            print 'Bad digit in print'
+        logAndPrintCommands(data, csvwriter)
+
         command = [roll, pitch, thrust, yaw]
-        try:
-            board.sendCMD(8, MultiWii.SET_RAW_RC, command)
-        except:
-            print 'Command not sent'
+        sendCommandsToPi(command, board)
+
         time.sleep(dt - (loop_start - time.time()))
 
     except KeyboardInterrupt:
