@@ -21,15 +21,15 @@ SENS_RATIO = IMG_WIDTH / IMG_HEIGHT
 TARG_HEIGHT = 355.6
 SENS_HEIGHT = pow(pow(SENS_DIAG, 2)  / (pow(SENS_RATIO, 2) + 1), .5)
 Y_FOV = 47                          # Vertical field of view %
-DEG_PPX_Y = IMG_HEIGHT / Y_FOV      # % per pixel 
+DEG_PPX_Y = IMG_HEIGHT / Y_FOV      # % per pixel
 
 def parseBlock(block):
     # RETURNS :
     # [x, y, inv_size]
     #   - x, y : x & y coordnates for center of detected object
     #   - dist : the inverted size of the detected region. NOTE: This
-    #       value is only assigned under the condition that the object is 
-    #       entirely within the frame or that it is detected as being too 
+    #       value is only assigned under the condition that the object is
+    #       entirely within the frame or that it is detected as being too
     #       close to the pixy
     min_dist = 1300
     margin = 4 # Number of pixels from edge that will signal out of frame
@@ -46,13 +46,13 @@ def parseBlock(block):
     t_y = block.y - (block.height / 2);   #top
     b_y = block.y + (block.height / 2);   #bottom
 
-    dist = (F_STOP * TARG_HEIGHT * IMG_HEIGHT) / (block.height * SENS_HEIGHT) 
+    dist = (F_STOP * TARG_HEIGHT * IMG_HEIGHT) / (block.height * SENS_HEIGHT)
 
     not_too_close = dist > min_dist
     out_of_x = (l_x <= xmin) or (r_x >= xmax)
     out_of_y = (t_y <= ymin) or (b_y >= ymax)
-    
-    if not_too_close and (out_of_x or out_of_y): 
+
+    if not_too_close and (out_of_x or out_of_y):
         print 'PARTIALLY OUT OF FRAME'
         dist = None
     return [block.x, block.y, dist]
@@ -75,14 +75,13 @@ csvwriter.writerow(['time', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'ya
 print 'filename=' + filename
 
 # Constant control values
-roll_offset = 1500              # center roll control value
-pitch_offset = 1507             # center pitch value
-thrust_offset = 1300            # center thrust control value (~hover)
-yaw_offset = 1500		        # center yaw control value
-pixel_x_offset = 160            # center of screen on x-axis
-pixel_y_offset = 100            # center of screen on y-axis
-dist_offset = 2100              # The output distance comes in discrete steps
-landing_thrust = thrust_offset - 24
+ROLL_OFFSET = 1500              # center roll control value
+PITCH_OFFSET = 1507             # center pitch value
+THRUST_OFFSET = 1300            # center thrust control value (~hover)
+YAW_OFFSET = 1500		        # center yaw control value
+PIXEL_X_OFFSET = 160            # center of screen on x-axis
+PIXEL_Y_OFFSET = 100            # center of screen on y-axis
+LANDING_THRUST = THRUST_OFFSET - 24
 
 # Thrust controller values
 T_KP = 1.2
@@ -90,7 +89,7 @@ T_KI = 0.04
 T_KD = 1.4
 thrust_pid = Pid(T_KP, T_KI, T_KD)
 thrust_pid.set_limit(50)
-thrust_pid.set_reference(pixel_y_offset)
+thrust_pid.set_reference(PIXEL_Y_OFFSET)
 
 # Yaw controller values
 Y_KI = 0.0
@@ -98,7 +97,7 @@ Y_KD = 0.0
 Y_KP = 1.0
 yaw_pid = Pid(Y_KP, Y_KI, Y_KD)
 yaw_pid.set_limit(20)
-yaw_pid.set_reference(pixel_x_offset)
+yaw_pid.set_reference(PIXEL_X_OFFSET)
 
 # Roll controller values
 R_KP = 2.0
@@ -106,15 +105,10 @@ R_KI = 1.0
 R_KD = 0.0
 roll_pid = Pid(R_KP, R_KI, R_KD)
 roll_pid.set_limit(20)
-roll_pid.set_reference(pixel_x_offset)
+roll_pid.set_reference(PIXEL_X_OFFSET)
 
 # Pitch controller values
 P_BUFF_LEN = 10      # Size of circular buffer for size_inv values
-P_KP = 0
-P_KI = 0
-P_KD = 0
-
-# Dist controller values
 P_KP = 0.0045
 P_KI = 0    #.0005
 P_KD = 0.04
@@ -123,10 +117,10 @@ P_KD = 0.04
 while pixy_get_blocks(1, blocks) == 0:
     print 'Attempting to lock distance'
 [x, y, dist] = parseBlock(blocks[0])
-dist_offset = dist
+DIST_OFFSET = dist
 pitch_pid = Pid(P_KP, P_KI, P_KD)
 pitch_pid.set_limit(40)
-pitch_pid.set_reference(dist_offset)
+pitch_pid.set_reference(DIST_OFFSET)
 pitch_buff = np.full(P_BUFF_LEN, dist)
 cum_pitch = sum(pitch_buff)
 
@@ -137,9 +131,9 @@ if len(argv) > 1 and argv[1] == 'ARM':
 else:
     print 'Running script in SAFE MODE.'
 
-print [[R_KP, R_KI, R_KD], 
-       [P_KP, P_KI, P_KD], 
-       [T_KP, T_KI, T_KD], 
+print [[R_KP, R_KI, R_KD],
+       [P_KP, P_KI, P_KD],
+       [T_KP, T_KI, T_KD],
        [Y_KP, Y_KI, Y_KD]]
 
 program_start = time.time()
@@ -156,29 +150,29 @@ while True:
             # Detection successful. Calculate axis vlues to be sent to FC
             [x, y, dist] = parseBlock(blocks[0])
             y = y - y_off
-            roll = -roll_pid.get_output(x) + roll_offset
-            thrust = thrust_pid.get_output(y) + thrust_offset
-            yaw = -yaw_pid.get_output(x) + yaw_offset
-            # Due to pixy noise, best reading of size will be the smallest buffer val 
+            roll = -roll_pid.get_output(x) + ROLL_OFFSET
+            thrust = thrust_pid.get_output(y) + THRUST_OFFSET
+            yaw = -yaw_pid.get_output(x) + YAW_OFFSET
+            # Due to pixy noise, best reading of size will be the smallest buffer val
             if dist is not None:
                 cum_pitch = cum_pitch + (dist - pitch_buff[p_i])
                 pitch_buff[p_i] = dist
                 dist = min(pitch_buff)
                 #dist = cum_pitch / P_BUFF_LEN
-                pitch = -pitch_pid.get_output(dist) + pitch_offset
+                pitch = -pitch_pid.get_output(dist) + PITCH_OFFSET
                 p_i = (p_i + 1) % P_BUFF_LEN
             else:
-                pitch = pitch_offset - 15
+                pitch = PITCH_OFFSET - 15
         else:
             dist = None
             x = None
             y = None
             size_inv = None
-            roll = -roll_pid.get_output(pixel_x_offset) + roll_offset
-            pitch = -pitch_pid.get_output(dist_offset) + pitch_offset
-            thrust = thrust_pid.get_output(pixel_y_offset) + thrust_offset
-            yaw = -yaw_pid.get_output(pixel_x_offset) + yaw_offset
-            
+            roll = -roll_pid.get_output(PIXEL_X_OFFSET) + ROLL_OFFSET
+            pitch = -pitch_pid.get_output(DIST_OFFSET) + PITCH_OFFSET
+            thrust = thrust_pid.get_output(PIXEL_Y_OFFSET) + THRUST_OFFSET
+            yaw = -yaw_pid.get_output(PIXEL_X_OFFSET) + YAW_OFFSET
+
         data = [time.time() - program_start, x, y, dist, roll, pitch, thrust, yaw]
 
         try:
@@ -198,13 +192,13 @@ while True:
         while True:
             loop_start = time.time()
             try:
-                board.sendCMD(16, MultiWii.SET_RAW_RC, [roll_offset,
-                                                        pitch_offset,
-                                                        landing_thrust,
-                                                        yaw_offset, 
-                                                        1500, 
-                                                        1500, 
-                                                        1500, 
+                board.sendCMD(16, MultiWii.SET_RAW_RC, [ROLL_OFFSET,
+                                                        PITCH_OFFSET,
+                                                        LANDING_THRUST,
+                                                        YAW_OFFSET,
+                                                        1500,
+                                                        1500,
+                                                        1500,
                                                         1500])
                 time.sleep(dt - (loop_start - time.time()))
             except KeyboardInterrupt:
