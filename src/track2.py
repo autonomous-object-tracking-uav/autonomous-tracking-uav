@@ -23,6 +23,12 @@ SENS_HEIGHT = pow(pow(SENS_DIAG, 2)  / (pow(SENS_RATIO, 2) + 1), .5)
 Y_FOV = 47                          # Vertical field of view %
 DEG_PPX_Y = IMG_HEIGHT / Y_FOV      # % per pixel
 
+def initPID(p, i, d, target, offset_limit):
+    pid = Pid(p, i, d)
+    pid.set_limit(offset_limit)
+    pid.set_reference(target)
+    return pid
+
 def sendCommandsToPi(commands, board):
     try:
         board.sendCMD(8, MultiWii.SET_RAW_RC, command)
@@ -100,25 +106,19 @@ LANDING_THRUST = THRUST_OFFSET - 24
 T_KP = 1.2
 T_KI = 0.04
 T_KD = 1.4
-thrust_pid = Pid(T_KP, T_KI, T_KD)
-thrust_pid.set_limit(50)
-thrust_pid.set_reference(PIXEL_Y_OFFSET)
+thrust_pid = initPID(T_KP, T_KI, T_KD, PIXEL_Y_OFFSET, 50)
 
 # Yaw controller values
 Y_KI = 0.0
 Y_KD = 0.0
 Y_KP = 1.0
-yaw_pid = Pid(Y_KP, Y_KI, Y_KD)
-yaw_pid.set_limit(20)
-yaw_pid.set_reference(PIXEL_X_OFFSET)
+yaw_pid = initPID(Y_KP, Y_KI, Y_KD, PIXEL_X_OFFSET, 20)
 
 # Roll controller values
 R_KP = 2.0
 R_KI = 1.0
 R_KD = 0.0
-roll_pid = Pid(R_KP, R_KI, R_KD)
-roll_pid.set_limit(20)
-roll_pid.set_reference(PIXEL_X_OFFSET)
+roll_pid = initPID(R_KP, R_KI, R_KD, PIXEL_X_OFFSET, 20)
 
 # Pitch controller values
 P_BUFF_LEN = 10      # Size of circular buffer for size_inv values
@@ -126,16 +126,14 @@ P_KP = 0.0045
 P_KI = 0    #.0005
 P_KD = 0.04
 
-# Create buffer to act as filter for pitch values
 while pixy_get_blocks(1, blocks) == 0:
+    # use the initial distance as locked distance for flight
     print 'Attempting to lock distance'
-[x, y, dist] = parseBlock(blocks[0])
-DIST_OFFSET = dist
-pitch_pid = Pid(P_KP, P_KI, P_KD)
-pitch_pid.set_limit(40)
-pitch_pid.set_reference(DIST_OFFSET)
-pitch_buff = np.full(P_BUFF_LEN, dist)
-cum_pitch = sum(pitch_buff)
+[x, y, DIST_OFFSET] = parseBlock(blocks[0])
+pitch_pid = initPID(P_KP, P_KI, P_KD, DIST_OFFSET, 40)
+
+pitch_buff = np.full(P_BUFF_LEN, dist) # buffer to act as filter for pitch values
+#cum_pitch = sum(pitch_buff)
 
 # Print preliminary flight information
 if len(argv) > 1 and argv[1] == 'ARM':
@@ -143,11 +141,6 @@ if len(argv) > 1 and argv[1] == 'ARM':
     print 'Flight controller is ARMED.'
 else:
     print 'Running script in SAFE MODE.'
-
-print [[R_KP, R_KI, R_KD],
-       [P_KP, P_KI, P_KD],
-       [T_KP, T_KI, T_KD],
-       [Y_KP, Y_KI, Y_KD]]
 
 program_start = time.time()
 dt = 0.02                       # 50 Hz refresh rate
@@ -167,7 +160,7 @@ while True:
             thrust = thrust_pid.get_output(y) + THRUST_OFFSET
             yaw = -yaw_pid.get_output(x) + YAW_OFFSET
             if dist is not None:
-                cum_pitch = cum_pitch + (dist - pitch_buff[p_i])
+                #cum_pitch = cum_pitch + (dist - pitch_buff[p_i])
                 pitch_buff[p_i] = dist
                 dist = min(pitch_buff)  # due to noise, pick min value
                 #dist = cum_pitch / P_BUFF_LEN
