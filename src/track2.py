@@ -27,20 +27,19 @@ def parseBlock(block):
     # RETURNS :
     # [x, y, inv_size]
     #   - x, y : x & y coordnates for center of detected object
-    #   - inv_size : the inverted size of the detected region. NOTE: This
-    #   value
-    #   is only assigned under the condition that the object is entirely
-    #   within
-    #   the frame or that it is detected as being too close to the pixy
+    #   - dist : the inverted size of the detected region. NOTE: This
+    #       value is only assigned under the condition that the object is 
+    #       entirely within the frame or that it is detected as being too 
+    #       close to the pixy
     min_dist = 1300
     margin = 4 # Number of pixels from edge that will signal out of frame
-             
+
     # Data range for pixy adjusted for the margin declaring out of frame
     xmin = 1 + margin
     ymin = 1 + margin
     xmax = 319 - margin
     ymax = 198 - margin
-         
+
     # edge boundaries of block
     l_x = block.x - (block.width / 2);    #left
     r_x = block.x + (block.width / 2);    #right
