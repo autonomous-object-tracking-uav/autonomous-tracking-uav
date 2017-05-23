@@ -11,17 +11,17 @@ import collections
 import numpy as np
 import sys
 
-# all sizes in mm
+# Constants for calculating distance all sizes in mm
 FOCAL_LEN = 2.8
 F_STOP = 2.0
 SENS_DIAG = 6.35
-IMG_HEIGHT = 200.0    # pixels
-IMG_WIDTH = 320.0     # pixels
+IMG_HEIGHT = 200.0                  # frame width pixels
+IMG_WIDTH = 320.0                   # frame width pixels
 SENS_RATIO = IMG_WIDTH / IMG_HEIGHT
 TARG_HEIGHT = 355.6
 SENS_HEIGHT = pow(pow(SENS_DIAG, 2)  / (pow(SENS_RATIO, 2) + 1), .5)
-Y_FOV = 47          # Vertical field of view %
-DEG_PPX_Y = IMG_HEIGHT / Y_FOV    # % per pixel 
+Y_FOV = 47                          # Vertical field of view %
+DEG_PPX_Y = IMG_HEIGHT / Y_FOV      # % per pixel 
 
 def parseBlock(block):
     # RETURNS :
@@ -58,9 +58,11 @@ def parseBlock(block):
         dist = None
     return [block.x, block.y, dist]
 
-pixy_init()
-board = MultiWii('/dev/ttyUSB0')
+pixy_init()                             # connect camera
+blocks = BlockArray(1)                  # array for camera output
+board = MultiWii('/dev/ttyUSB0')        # connect arduino
 
+# set up data logging
 path = '/home/pi/anti-drone-system/data'
 filenames = [x for x in listdir(path) if isfile(join(path, x))]
 if len(filenames) != 0:
@@ -73,29 +75,25 @@ csvwriter = csv.writer(datafile, delimiter=',', quotechar='"', quoting=csv.QUOTE
 csvwriter.writerow(['time', 'x', 'y', 'size_inv', 'roll', 'pitch', 'thrust', 'yaw'])
 print 'filename=' + filename
 
-blocks = BlockArray(1)
-
+# Constant control values
 roll_offset = 1500              # center roll control value
-
-#pitch_offset = 1493             # center pitch control value
-pitch_offset = 1507
+pitch_offset = 1507             # center pitch value
 thrust_offset = 1300            # center thrust control value (~hover)
 yaw_offset = 1500		        # center yaw control value
 pixel_x_offset = 160            # center of screen on x-axis
 pixel_y_offset = 100            # center of screen on y-axis
-#size_inv_offset = 0.004         # inverse of target size at ~2 meters distance
 dist_offset = 2100              # The output distance comes in discrete steps
 landing_thrust = thrust_offset - 24
 
-# Thrust values
-T_KP = 1.2 
+# Thrust controller values
+T_KP = 1.2
 T_KI = 0.04
-T_KD = 1.4 
+T_KD = 1.4
 thrust_pid = Pid(T_KP, T_KI, T_KD)
-thrust_pid.set_limit(50)    # was 50
+thrust_pid.set_limit(50)
 thrust_pid.set_reference(pixel_y_offset)
 
-# Yaw values
+# Yaw controller values
 Y_KI = 0.0
 Y_KD = 0.0
 Y_KP = 1.0
@@ -103,7 +101,7 @@ yaw_pid = Pid(Y_KP, Y_KI, Y_KD)
 yaw_pid.set_limit(20)
 yaw_pid.set_reference(pixel_x_offset)
 
-# Roll values
+# Roll controller values
 R_KP = 2.0
 R_KI = 1.0
 R_KD = 0.0
@@ -111,19 +109,18 @@ roll_pid = Pid(R_KP, R_KI, R_KD)
 roll_pid.set_limit(20)
 roll_pid.set_reference(pixel_x_offset)
 
-# Pitch values
+# Pitch controller values
 P_BUFF_LEN = 10      # Size of circular buffer for size_inv values
-p_i = 0
 P_KP = 0
 P_KI = 0
 P_KD = 0
 
-# Dist values
+# Dist controller values
 P_KP = 0.0045
 P_KI = 0    #.0005
 P_KD = 0.04
 
-# Added for holding pitch
+# Create buffer to act as filter for pitch values
 while pixy_get_blocks(1, blocks) == 0:
     print 'Attempting to lock distance'
 [x, y, dist] = parseBlock(blocks[0])
@@ -132,11 +129,9 @@ pitch_pid = Pid(P_KP, P_KI, P_KD)
 pitch_pid.set_limit(40)
 pitch_pid.set_reference(dist_offset)
 pitch_buff = np.full(P_BUFF_LEN, dist)
-#TODO pitch_buff = np.full(P_BUFF_LEN, sys.maxint)
 cum_pitch = sum(pitch_buff)
 
-dt = 0.02                       # 50 Hz refresh rate
-
+# Print preliminary flight information
 if len(argv) > 1 and argv[1] == 'ARM':
     board.arm()
     print 'Flight controller is ARMED.'
@@ -149,6 +144,7 @@ print [[R_KP, R_KI, R_KD],
        [Y_KP, Y_KI, Y_KD]]
 
 program_start = time.time()
+dt = 0.02                       # 50 Hz refresh rate
 
 while True:
     try:
@@ -168,9 +164,8 @@ while True:
             if dist is not None:
                 cum_pitch = cum_pitch + (dist - pitch_buff[p_i])
                 pitch_buff[p_i] = dist
-                #dist = min(pitch_buff)
-                #dist = np.mean(pitch_buff)
-                dist = cum_pitch / P_BUFF_LEN
+                dist = min(pitch_buff)
+                #dist = cum_pitch / P_BUFF_LEN
                 pitch = -pitch_pid.get_output(dist) + pitch_offset
                 p_i = (p_i + 1) % P_BUFF_LEN
             else:
