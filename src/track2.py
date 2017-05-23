@@ -147,23 +147,24 @@ while True:
         board.getData(MultiWii.ATTITUDE)
         y_off = board.attitude['angy'] / DEG_PPX_Y
         if count > 0:
-            # Detection successful. Calculate axis vlues to be sent to FC
+            # detection successful. Calculate axis vlues to be sent to FC
             [x, y, dist] = parseBlock(blocks[0])
             y = y - y_off
             roll = -roll_pid.get_output(x) + ROLL_OFFSET
             thrust = thrust_pid.get_output(y) + THRUST_OFFSET
             yaw = -yaw_pid.get_output(x) + YAW_OFFSET
-            # Due to pixy noise, best reading of size will be the smallest buffer val
             if dist is not None:
                 cum_pitch = cum_pitch + (dist - pitch_buff[p_i])
                 pitch_buff[p_i] = dist
-                dist = min(pitch_buff)
+                dist = min(pitch_buff)  # due to noise, pick min value
                 #dist = cum_pitch / P_BUFF_LEN
                 pitch = -pitch_pid.get_output(dist) + PITCH_OFFSET
                 p_i = (p_i + 1) % P_BUFF_LEN
             else:
+                # too close to target to detect distance
                 pitch = PITCH_OFFSET - 15
         else:
+            # detection failed
             dist = None
             x = None
             y = None
@@ -174,7 +175,7 @@ while True:
             yaw = -yaw_pid.get_output(PIXEL_X_OFFSET) + YAW_OFFSET
 
         data = [time.time() - program_start, x, y, dist, roll, pitch, thrust, yaw]
-
+        
         try:
             print 'time=%.2f x=%3d y=%3d dist=%4d roll=%4d pitch=%4d thrust=%4d yaw=%4d' % tuple([0.0 if x is None else x for x in data])
             csvwriter.writerow(data)
